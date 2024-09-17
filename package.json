@@ -1,0 +1,48 @@
+{
+  "name": "@lilven/mongoose-backup",
+  "version": "1.0.0",
+  "description": "A simple backup and restore utility for MongoDB using Mongoose.",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "homepage": "https://pkg.lilven.com/mongoose-backup",
+  "scripts": {
+    "build": "tsup",
+    "test": "ts-node --transpile-only ./examples/index.spec.ts"
+  },
+  "keywords": [
+    "mongoose",
+    "backup",
+    "restore",
+    "mongodb",
+    "database"
+  ],
+  "authors": [
+    {
+      "name": "rivalth",
+      "email": "hi@rivalth.com"
+    },
+    {
+      "name": "Lilven Development Team",
+      "email": "devs@lilven.com"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lilvenDevs/mongoose-backup",
+    "homepage": "https://pkg.lilven.com/mongoose-backup"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.5.5",
+    "dotenv": "^16.4.5",
+    "ts-node": "^10.9.2",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.2"
+  },
+  "dependencies": {
+    "cron": "^3.1.7",
+    "fs": "^0.0.1-security",
+    "mongoose": "^8.6.2"
+  }
+}
