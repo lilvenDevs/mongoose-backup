@@ -43,6 +43,7 @@ Install @lilven/mongoose-backup with npm
 const { MongooseBackup } = require("@lilven/mongoose-backup");
 const Backup = new MongooseBackup({
     url: "{mongodb_url}",
+    cycle: "minutes",
     location: "Europe/Istanbul" // optional, default: Europe/Istanbul
 });
 
@@ -50,6 +51,7 @@ const Backup = new MongooseBackup({
 import { MongooseBackup } from "@lilven/mongoose-backup";
 const Backup = new MongooseBackup({
     url: "{mongodb_url}",
+    cycle: "minutes",
     location: "Europe/Istanbul" // optional, default: Europe/Istanbul
 });
 ```
