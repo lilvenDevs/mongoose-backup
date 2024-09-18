@@ -1,10 +1,9 @@
-<<<<<<< HEAD
 import mongoose from "mongoose";
 import { EventEmitter } from "events";
-import { BackupModuleProps, CycleType } from "../types/interfaces";
-import { isCycleType, MethodLocalize } from "../methods/Localize";
+import { MongoProps, CycleType } from "../../types/interfaces";
+import { isCycleType, LocalizeMongo } from "../../methods/Localize";
 
-export class BackupModule extends EventEmitter {
+export class MongooseBackup extends EventEmitter {
   connected: boolean = false;
   url: string;
   location: string;
@@ -39,7 +38,10 @@ export class BackupModule extends EventEmitter {
       return mongoose.connection.db.collection(name).find().toArray();
     };
   }
-
+  private async init() {
+    await connectToDatabase()
+    await Start()
+  }
   private async connectToDatabase() {
     try {
       await mongoose.connect(this.url);
@@ -65,19 +67,6 @@ export class BackupModule extends EventEmitter {
   }
 
   async Start() {
-    return MethodLocalize.call(this);
+    return LocalizeMongo.call(this);
   }
 }
-=======
-import { BackupClientProps } from '../types/interfaces'
- 
-export class BackupClient {
-  constructor({ provider, useCache} : BackupClientProps) {
-    this.backup = provider;
-    this.cache = useCache
-  }
-  async init() {
-    await this.backup.init()
-  }
-}
->>>>>>> 6a1eabf (Multi Provider Support)
