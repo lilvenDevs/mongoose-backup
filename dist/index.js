@@ -52,83 +52,79 @@ var times_config_default = {
 
 // src/methods/Localize.ts
 var import_fs = require("fs");
+
+// src/methods/formatDate.ts
+function formatDate(date) {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${day}.${month}.${year} ${hours}:${minutes}`;
+}
+
+// src/methods/Localize.ts
 async function MethodLocalize() {
   const { cycle } = this;
   if (cycle && typeof cycle !== "string") throw new Error("Cycle is not a string!");
   if (!isCycleType(cycle)) throw new Error("Cycle is not a valid type!");
-  try {
-    if (!this.connected) return this.emit("backupError", "You must connect to database first!");
-    this.emit("started", {
-      message: "Backup started.",
-      time: /* @__PURE__ */ new Date()
-    });
-    const documents = await this.getDocuments();
-    const job = new import_cron.CronJob(times_config_default[cycle], async () => {
-      if (!documents.length) return;
-      documents.forEach(async (document, index) => {
-        const doc = await this.getDocument(document.name);
-        const fileName = `${(/* @__PURE__ */ new Date()).toLocaleDateString().replace(/\//g, "-")}_${(/* @__PURE__ */ new Date()).toLocaleTimeString().replace(/:/g, "-")}`;
-        let startMs = (/* @__PURE__ */ new Date()).getTime();
-        if (!(0, import_fs.existsSync)(`./.backup`)) {
-          (0, import_fs.mkdirSync)(`./.backup`);
-        }
-        if (!(0, import_fs.existsSync)(`./.backup/${fileName}`)) {
-          (0, import_fs.mkdirSync)(`./.backup/${fileName}`);
-        }
-        let writeFileOptions = this.readable ? JSON.stringify(doc, null, 4) : JSON.stringify(doc);
-        (0, import_fs.writeFileSync)(`./.backup/${fileName}/${document.name}.json`, writeFileOptions);
-        let dirs = (0, import_fs.readdirSync)(`./.backup`);
-        let backupDirLength = dirs.length;
-        if (backupDirLength > this.maximumBackup) {
-          dirs = dirs.sort((a, b) => {
-            const getFullDate = (date) => {
-              let _date = a.split("_")[0].replace(/-/g, " ");
-              let _time = a.split("_")[1].replace(/-/g, ":");
-              return (/* @__PURE__ */ new Date(`${_date} ${_time}`)).getTime();
-            };
-            return getFullDate(b) - getFullDate(a);
-          });
-          dirs.forEach((dir, index2) => {
-            if (index2 == backupDirLength - 1) {
-              this.emit("backupCleaning", {
-                message: `Backup is deleting ${backupDirLength - this.maximumBackup} directory.`,
-                time: /* @__PURE__ */ new Date(),
-                total: backupDirLength - this.maximumBackup,
-                items: dirs.slice(this.maximumBackup)
-              });
-            } else {
-              let files = (0, import_fs.readdirSync)(`./.backup/${dir}`);
-              if (files.length) {
-                (0, import_fs.rm)(
-                  `./.backup/${dir}`,
-                  { recursive: true, force: true },
-                  (err) => {
-                    if (err) {
-                      this.emit("backupCleaningError", {
-                        message: `Backup cleaning error on ${dir}: ${err.message}`,
-                        time: /* @__PURE__ */ new Date()
-                      });
-                    }
-                  }
-                );
-              }
-            }
-          });
-        }
-        if (index === documents.length - 1) {
-          this.emit("backupDone", {
-            message: `Backup is done in ${(/* @__PURE__ */ new Date()).getTime() - startMs}ms.`,
-            time: /* @__PURE__ */ new Date(),
-            total: documents.length,
-            items: doc.length
-          });
-        }
+  if (!this.connected) return this.emit("backupError", "You must connect to database first!");
+  this.emit("started", {
+    message: "Backup started.",
+    time: formatDate(/* @__PURE__ */ new Date())
+  });
+  const documents = await this.getDocuments();
+  const job = new import_cron.CronJob(times_config_default[cycle], async () => {
+    if (!documents.length) return;
+    const backupDir = "./.backup";
+    if (!(0, import_fs.existsSync)(backupDir)) {
+      (0, import_fs.mkdirSync)(backupDir);
+    }
+    for (const document of documents) {
+      const doc = await this.getDocument(document.name);
+      const fileName = `${(/* @__PURE__ */ new Date()).toLocaleDateString().replace(/\//g, "-")}_${(/* @__PURE__ */ new Date()).toLocaleTimeString("en-GB").replace(/:/g, "-")}`;
+      const documentDir = `${backupDir}/${fileName}`;
+      if (!(0, import_fs.existsSync)(documentDir)) {
+        (0, import_fs.mkdirSync)(documentDir);
+      }
+      const writeFileOptions = this.readable ? JSON.stringify(doc, null, 4) : JSON.stringify(doc);
+      (0, import_fs.writeFileSync)(`${documentDir}/${document.name}.json`, writeFileOptions);
+    }
+    const dirs = (0, import_fs.readdirSync)(backupDir);
+    if (dirs.length > this.maximumBackup) {
+      const sortedDirs = dirs.sort((a, b) => {
+        const getFullDate = (date) => {
+          const [datePart, timePart] = date.split("_");
+          return (/* @__PURE__ */ new Date(`${datePart.replace(/-/g, " ")} ${timePart.replace(/-/g, ":")}`)).getTime();
+        };
+        return getFullDate(b) - getFullDate(a);
       });
-    }, null, true, this.location);
-    job.start();
-  } catch (error) {
-    throw new Error(error);
-  }
+      const dirsToDelete = sortedDirs.slice(this.maximumBackup);
+      this.emit("backupCleaning", {
+        message: `Backup is deleting ${dirsToDelete.length} directories.`,
+        time: formatDate(/* @__PURE__ */ new Date()),
+        total: dirsToDelete.length,
+        items: dirsToDelete
+      });
+      for (const dir of dirsToDelete) {
+        try {
+          (0, import_fs.rmSync)(`${backupDir}/${dir}`, { recursive: true, force: true });
+        } catch (err) {
+          this.emit("backupCleaningError", {
+            message: `Backup cleaning error on ${dir}: ${err.message}`,
+            time: formatDate(/* @__PURE__ */ new Date())
+          });
+        }
+      }
+    }
+    this.emit("backupDone", {
+      message: `Backup is done.`,
+      time: formatDate(/* @__PURE__ */ new Date()),
+      total: documents.length,
+      items: documents.length
+    });
+  }, null, true, this.location);
+  job.start();
 }
 function isCycleType(cycle) {
   return true;
@@ -136,7 +132,7 @@ function isCycleType(cycle) {
 
 // src/lib/index.ts
 var BackupModule = class extends import_events.EventEmitter {
-  connected;
+  connected = false;
   url;
   location;
   cycle;
@@ -144,56 +140,47 @@ var BackupModule = class extends import_events.EventEmitter {
   readable;
   getDocuments;
   getDocument;
-  constructor({
-    url,
-    location = "Europe/Istanbul",
-    cycle,
-    maximumBackup,
-    readable = false
-  }) {
+  constructor({ url, location = "Europe/Istanbul", cycle, maximumBackup, readable = false }) {
     super();
-    if (!url || typeof url !== "string") throw new Error("url is not defined or not a string!");
-    if (location && typeof location !== "string") throw new Error("location is not a string!");
-    if (!maximumBackup || typeof maximumBackup !== "number") throw new Error("maximumBackup is not defined or not a number!");
-    if (!cycle || typeof cycle !== "string") throw new Error("cycle is not defined or not a string!");
-    if (!isCycleType(cycle)) throw new Error("cycle is not a valid type!");
+    if (typeof url !== "string") throw new Error("url is not defined or not a string!");
+    if (typeof location !== "string") throw new Error("location is not a string!");
+    if (typeof maximumBackup !== "number") throw new Error("maximumBackup is not defined or not a number!");
+    if (typeof cycle !== "string" || !isCycleType(cycle)) throw new Error("cycle is not defined or not a valid type!");
     if (typeof readable !== "boolean") throw new Error("readable is not a boolean!");
-    if (!url || !cycle || !maximumBackup) throw new Error("You must define url, cycle and maximumBackup!");
-    this.connected = false;
     this.url = url;
-    this.location = location || "Europe/Istanbul";
-    this.maximumBackup = maximumBackup || Infinity;
+    this.location = location;
+    this.maximumBackup = maximumBackup;
     this.cycle = cycle;
     this.readable = readable;
-    import_mongoose.default.connect(this.url).catch((err) => {
+    this.connectToDatabase();
+    this.getDocuments = async () => {
+      return import_mongoose.default.connection.db.listCollections().toArray();
+    };
+    this.getDocument = async (name) => {
+      return import_mongoose.default.connection.db.collection(name).find().toArray();
+    };
+  }
+  async connectToDatabase() {
+    try {
+      await import_mongoose.default.connect(this.url);
+      this.connected = true;
+      this.emit("connected", { url: this.url, location: this.location });
+      setInterval(() => {
+        this.emit("ping", {
+          message: "Mongoose Backup is alive.",
+          location: this.location,
+          url: this.url,
+          time: /* @__PURE__ */ new Date()
+        });
+      }, 6e4);
+    } catch (err) {
       this.connected = false;
       throw new Error(err);
-    });
+    }
     import_mongoose.default.connection.on("error", (err) => {
       this.connected = false;
       throw new Error(err);
     });
-    import_mongoose.default.connection.on("connected", () => {
-      this.emit("connected", { url, location });
-      setInterval(() => {
-        this.emit("ping", {
-          message: "Mongoose Backup is alive.",
-          location: this.location || "Europe/Istanbul",
-          url: this.url || "Empty",
-          time: /* @__PURE__ */ new Date()
-        });
-      }, 6e4);
-    });
-    this.on("connected", () => {
-      this.connected = true;
-    });
-    this.getDocuments = () => {
-      return import_mongoose.default.connection.db.listCollections().toArray();
-    };
-    this.getDocument = (name) => {
-      return import_mongoose.default.connection.db.collection(name).find().toArray();
-    };
-    return this;
   }
   async Start() {
     return MethodLocalize.call(this);

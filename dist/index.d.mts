@@ -12,13 +12,14 @@ interface BackupModuleProps {
 declare class BackupModule extends EventEmitter {
     connected: boolean;
     url: string;
-    location?: string;
+    location: string;
     cycle: CycleType;
     maximumBackup: number;
-    readable?: boolean;
-    getDocuments: Function;
-    getDocument: Function;
-    constructor({ url, location, cycle, maximumBackup, readable, }: BackupModuleProps);
+    readable: boolean;
+    getDocuments: () => Promise<any>;
+    getDocument: (name: string) => Promise<any[]>;
+    constructor({ url, location, cycle, maximumBackup, readable }: BackupModuleProps);
+    private connectToDatabase;
     Start(): Promise<any>;
 }
 
