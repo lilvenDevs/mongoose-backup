@@ -1,6 +1,6 @@
 {
   "name": "@lilven/mongoose-backup",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A simple backup and restore utility for MongoDB using Mongoose.",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -29,7 +29,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/lilvenDevs/mongoose-backup",
+    "url": "https://github.com/lilvenDevs/mongoose-backup.git",
     "homepage": "https://pkg.lilven.com/mongoose-backup"
   },
   "license": "MIT",

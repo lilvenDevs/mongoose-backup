@@ -44,7 +44,7 @@ const { MongooseBackup } = require("@lilven/mongoose-backup");
 const Backup = new MongooseBackup({
     url: "{mongodb_url}",
     cycle: "minutes",
-    location: "Europe/Istanbul" // optional, default: Europe/Istanbul
+    location: "Europe/Istanbul" // Timezone location default is Europe/Istanbul
 });
 
 // ESM
@@ -52,7 +52,7 @@ import { MongooseBackup } from "@lilven/mongoose-backup";
 const Backup = new MongooseBackup({
     url: "{mongodb_url}",
     cycle: "minutes",
-    location: "Europe/Istanbul" // optional, default: Europe/Istanbul
+    location: "Europe/Istanbul" // Timezone location default is Europe/Istanbul
 });
 ```
 
@@ -66,7 +66,8 @@ const Backup = new MongooseBackup({
 import { MongooseBackup, EventInterface } from "@lilven/mongoose-backup";
 const Backup = new MongooseBackup({
     url: "{mongodb_url}",
-    cycle: "minutes"
+    cycle: "minutes",
+    location: "Europe/Istanbul" // Timezone location default is Europe/Istanbul
 });
 
 Backup.on('connected', () => {
@@ -74,7 +75,7 @@ Backup.on('connected', () => {
 });
 
 Backup.on("backupDone", (data: EventInterface) => {
-    console.log(`${data.time} [MongooseBackup]: Total ${data.total} documents with ${data.items} items backed up.`);
+    console.log(`${data.time} [MongooseBackup]: ${data.message}`);
 });
 ```
 
@@ -107,19 +108,19 @@ Backup.on("backupError", (message: string) => {
 });
 
 Backup.on("ping", (data: EventInterface) => {
-    console.log(`[MongooseBackup]: Backup is alive. Location: ${data.location} Url: ${data.url}, Time: ${data.time}`);
+    console.log(`${data.time} [MongooseBackup]: Backup is alive. Location: ${data.location}`);
 });
 
 Backup.on("backupDone", (data: EventInterface) => {
-    console.log(`${data.time} [MongooseBackup]: Total ${data.total} documents with ${data.items} items backed up.`);
+    console.log(`${data.time} [MongooseBackup]: ${data.message}`);
 });
 
 Backup.on("backupCleaning", (data: EventInterface) => {
-    console.log(`${data.time} [MongooseBackup]: ${data.message} Location: ${data.location}, Total: ${data.total}, Items: ${data.items}`);
+    console.log(`${data.time} [MongooseBackup]: ${data.message}, Total: ${data.total}, Items: ${data.items}`);
 });
 
 Backup.on("backupCleaningError", (data: EventInterface) => {
-    console.log(`${data.time} [MongooseBackup]: ${data.message} Location: ${data.location}, Total: ${data.total}, Items: ${data.items}`);
+    console.log(`${data.time} [MongooseBackup]: ${data.message}`);
 });
 ```
 
