@@ -1,3 +1,6 @@
 /node_modules
 /.backup
+/dist
+
 .env
+.DS_Store
