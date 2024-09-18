@@ -4,6 +4,7 @@
 /.backup
 
 .env
+.env.example
 .DS_Store
 tsconfig.json
 tsup.config.ts
