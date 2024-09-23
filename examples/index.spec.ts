@@ -1,4 +1,5 @@
-import { MongooseBackup, EventInterface } from "../src/index";
+
+import { MongooseBackup, BackupClient,EventInterface } from "../src/index";
 import "dotenv/config";
 
 const Backup = new MongooseBackup({
@@ -8,6 +9,10 @@ const Backup = new MongooseBackup({
   maximumBackup: 3, // If you want to delete old backups, set this to a number. Default is Infinity.
   readable: true, // If you want to readable backup files, set this to true. Default is false.
 });
+
+const client = new BackupClient({
+  provider:  Backup
+})
 
 Backup.on('connected', (data: EventInterface) => {
    console.log(`[MongooseBackup]: Connected to ${data.url}!`);

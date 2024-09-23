@@ -4,7 +4,11 @@ import timesConfig from "./times.config.json";
 import { existsSync, mkdirSync, readdirSync, writeFileSync, rmSync } from "fs";
 import { formatDate } from "./formatDate";
 
+<<<<<<< HEAD
 export async function MethodLocalize(this: any) {
+=======
+export async function LocalizeMongo(this: any) {
+>>>>>>> 6a1eabf (Multi Provider Support)
   const { cycle }: LocalizeProps = this;
 
   if (cycle && typeof cycle !== "string") throw new Error("Cycle is not a string!");
