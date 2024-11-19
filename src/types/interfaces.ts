@@ -2,7 +2,7 @@ export type CycleType = 'minutes' | 'hours' | 'daily' | 'weekly' | 'monthly' | '
 
 export interface BackupModuleProps {
     url: string;
-    location?: string;
+    location?: Intl.DateTimeFormatOptions['timeZone'];
     cycle: CycleType;
     maximumBackup: number;
     readable?: boolean;

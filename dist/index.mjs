@@ -17,18 +17,6 @@ var times_config_default = {
 
 // src/methods/Localize.ts
 import { existsSync, mkdirSync, readdirSync, writeFileSync, rmSync } from "fs";
-
-// src/methods/formatDate.ts
-function formatDate(date) {
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = date.getFullYear();
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${day}.${month}.${year} ${hours}:${minutes}`;
-}
-
-// src/methods/Localize.ts
 async function MethodLocalize() {
   const { cycle } = this;
   if (cycle && typeof cycle !== "string") throw new Error("Cycle is not a string!");
@@ -36,59 +24,68 @@ async function MethodLocalize() {
   if (!this.connected) return this.emit("backupError", "You must connect to database first!");
   this.emit("started", {
     message: "Backup started.",
-    time: formatDate(/* @__PURE__ */ new Date())
+    time: this.formatter.format(/* @__PURE__ */ new Date())
   });
   const documents = await this.getDocuments();
-  const job = new CronJob(times_config_default[cycle], async () => {
-    if (!documents.length) return;
-    const backupDir = "./.backup";
-    if (!existsSync(backupDir)) {
-      mkdirSync(backupDir);
-    }
-    for (const document of documents) {
-      const doc = await this.getDocument(document.name);
-      const fileName = `${(/* @__PURE__ */ new Date()).toLocaleDateString().replace(/\//g, "-")}_${(/* @__PURE__ */ new Date()).toLocaleTimeString("en-GB").replace(/:/g, "-")}`;
-      const documentDir = `${backupDir}/${fileName}`;
-      if (!existsSync(documentDir)) {
-        mkdirSync(documentDir);
+  const job = new CronJob(
+    times_config_default[cycle],
+    async () => {
+      if (!documents.length) return;
+      const backupDir = "./.backup";
+      if (!existsSync(backupDir)) {
+        mkdirSync(backupDir);
       }
-      const writeFileOptions = this.readable ? JSON.stringify(doc, null, 4) : JSON.stringify(doc);
-      writeFileSync(`${documentDir}/${document.name}.json`, writeFileOptions);
-    }
-    const dirs = readdirSync(backupDir);
-    if (dirs.length > this.maximumBackup) {
-      const sortedDirs = dirs.sort((a, b) => {
-        const getFullDate = (date) => {
-          const [datePart, timePart] = date.split("_");
-          return (/* @__PURE__ */ new Date(`${datePart.replace(/-/g, " ")} ${timePart.replace(/-/g, ":")}`)).getTime();
-        };
-        return getFullDate(b) - getFullDate(a);
+      const ddmmyyyy = (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { timeZone: this.location }).replace(/\//g, "-");
+      const hhmmss = (/* @__PURE__ */ new Date()).toLocaleTimeString("en-GB", { timeZone: this.location }).replace(/:/g, "-");
+      const fileName = `${ddmmyyyy}_${hhmmss}`;
+      for (const document of documents) {
+        const doc = await this.getDocument(document.name);
+        const documentDir = `${backupDir}/${fileName}`;
+        if (!existsSync(documentDir)) {
+          mkdirSync(documentDir);
+        }
+        const writeFileOptions = this.readable ? JSON.stringify(doc, null, 4) : JSON.stringify(doc);
+        writeFileSync(`${documentDir}/${document.name}.json`, writeFileOptions);
+      }
+      const dirs = readdirSync(backupDir);
+      const dirDates = dirs.map((dir) => {
+        const [datePart, timePart] = dir.split("_");
+        const [day, month, year] = datePart.split("-");
+        const [hour, minute, second] = timePart.split("-");
+        const isoDate = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+        return { dir, time: new Date(isoDate).getTime() };
       });
-      const dirsToDelete = sortedDirs.slice(this.maximumBackup);
-      this.emit("backupCleaning", {
-        message: `Backup is deleting ${dirsToDelete.length} directories.`,
-        time: formatDate(/* @__PURE__ */ new Date()),
-        total: dirsToDelete.length,
-        items: dirsToDelete
-      });
-      for (const dir of dirsToDelete) {
-        try {
-          rmSync(`${backupDir}/${dir}`, { recursive: true, force: true });
-        } catch (err) {
-          this.emit("backupCleaningError", {
-            message: `Backup cleaning error on ${dir}: ${err.message}`,
-            time: formatDate(/* @__PURE__ */ new Date())
-          });
+      const sortedDirs = dirDates.sort((a, b) => a.time - b.time).map((item) => item.dir);
+      if (sortedDirs.length > this.maximumBackup) {
+        const dirsToDelete = sortedDirs.slice(0, sortedDirs.length - this.maximumBackup);
+        this.emit("backupCleaning", {
+          message: `Backup is deleting ${dirsToDelete.length} directories.`,
+          time: this.formatter.format(/* @__PURE__ */ new Date()),
+          total: dirsToDelete.length,
+          items: dirsToDelete
+        });
+        for (const dir of dirsToDelete) {
+          try {
+            rmSync(`${backupDir}/${dir}`, { recursive: true, force: true });
+          } catch (err) {
+            this.emit("backupCleaningError", {
+              message: `Backup cleaning error on ${dir}: ${err.message}`,
+              time: this.formatter.format(/* @__PURE__ */ new Date())
+            });
+          }
         }
       }
-    }
-    this.emit("backupDone", {
-      message: `Backup is done.`,
-      time: formatDate(/* @__PURE__ */ new Date()),
-      total: documents.length,
-      items: documents.length
-    });
-  }, null, true, this.location);
+      this.emit("backupDone", {
+        message: `Backup is done.`,
+        time: this.formatter.format(/* @__PURE__ */ new Date()),
+        total: documents.length,
+        items: documents.length
+      });
+    },
+    null,
+    true,
+    this.location
+  );
   job.start();
 }
 function isCycleType(cycle) {
@@ -103,6 +100,7 @@ var BackupModule = class extends EventEmitter {
   cycle;
   maximumBackup;
   readable;
+  formatter;
   getDocuments;
   getDocument;
   constructor({ url, location = "Europe/Istanbul", cycle, maximumBackup, readable = false }) {
@@ -117,6 +115,15 @@ var BackupModule = class extends EventEmitter {
     this.maximumBackup = maximumBackup;
     this.cycle = cycle;
     this.readable = readable;
+    this.formatter = new Intl.DateTimeFormat("en-GB", {
+      timeZone: this.location,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    });
     this.connectToDatabase();
     this.getDocuments = async () => {
       return mongoose.connection.db.listCollections().toArray();
@@ -135,7 +142,7 @@ var BackupModule = class extends EventEmitter {
           message: "Mongoose Backup is alive.",
           location: this.location,
           url: this.url,
-          time: /* @__PURE__ */ new Date()
+          time: this.formatter.format(/* @__PURE__ */ new Date())
         });
       }, 6e4);
     } catch (err) {
